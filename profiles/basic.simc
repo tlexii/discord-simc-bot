@@ -1,0 +1,7 @@
+# Basic settings
+default_region=us
+default_server=khazgoroth
+fight_style=patchwerk
+# hosted_html=1
+report_details=0
+threads=4

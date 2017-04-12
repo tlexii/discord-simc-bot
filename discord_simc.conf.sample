@@ -1,0 +1,11 @@
+[rabbitmq]
+hostname=localhost
+port=5672
+
+[simcdaemon]
+exchange=myexchange
+request_routing_key=simc.request
+response_routing_key=simc.response
+
+[discord]
+token=<bot auth token>

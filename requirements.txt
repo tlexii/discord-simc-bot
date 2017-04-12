@@ -1,0 +1,2 @@
+aioamqp
+discord.py
