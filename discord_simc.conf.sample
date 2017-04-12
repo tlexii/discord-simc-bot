@@ -9,3 +9,11 @@ response_routing_key=simc.response
 
 [discord]
 token=<bot auth token>
+
+[simc]
+simc_path=/usr/local/simc/engine/simc
+output_path=/var/www/localhost/htdocs/sim
+profile_path=./profiles
+url_prefix=http://localhost/sim
+default_realm=khazgoroth
+blizzard_key=<blizzard api key>
