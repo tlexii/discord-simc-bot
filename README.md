@@ -1,5 +1,5 @@
 # discord-simc-bot
-A Discord bot that requests simulations of World of Warcraft characters via message queue, based on discord-py.
+A Discord bot that requests simulations of World of Warcraft characters via message queue, based on discord.py (https://github.com/Rapptz/discord.py).
 
 This is not a simple executable you can just run, there are a number of components needed, (which suit my setup).
 
@@ -11,7 +11,7 @@ There are three code components:
 Prerequisites:
  1. Discord API account and a bot token (https://discordapp.com/developers/docs/intro)
  1. SimulationCraft (http://http://simulationcraft.org/) command-line executable installed.
- 1. A Mashery account/Blizzard API key (https://dev.battle.net/) - for the thumbnail URL, if you don't have this already you could parse the simc HTML output instead with BeautifulSoup
+ 1. A Mashery account/Blizzard API key (https://dev.battle.net/) - for the thumbnail URL, if you don't have this already you could parse the simc HTML output instead with BeautifulSoup. Note that you will need this if you compile SimulationCraft yourself.
  1. Access to message broker such as RabbitMQ
 
 Musings:
