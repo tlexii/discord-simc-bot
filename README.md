@@ -1,4 +1,8 @@
 # discord-simc-bot
+<p align="center">
+<img src='https://drive.google.com/file/d/0B8anzOsSIqKXR3RRdTJkOGxmSzg/view?usp=sharing'>
+</p>
+
 A Discord bot that requests simulations of World of Warcraft characters via message queue, based on discord.py (https://github.com/Rapptz/discord.py).
 
 This is not a simple executable you can just run, there are a number of components needed, (which suit my setup).
