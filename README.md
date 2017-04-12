@@ -1,6 +1,6 @@
 # discord-simc-bot
 <p align="center">
-<img src='https://drive.google.com/file/d/0B8anzOsSIqKXR3RRdTJkOGxmSzg/view?usp=sharing'>
+<img src='https://github.com/tlexii/discord-simc-bot/raw/master/sample.png'>
 </p>
 
 A Discord bot that requests simulations of World of Warcraft characters via message queue, based on discord.py (https://github.com/Rapptz/discord.py).
