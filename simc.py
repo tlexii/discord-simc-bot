@@ -156,6 +156,7 @@ class Simc(object):
             cmd.append("{}/scaling.simc".format(self._profile_path))
         else:
             cmd.append("{}/noscaling.simc".format(self._profile_path))
+        cmd.append("html={}".format(params["path"]))
         LOGGER.debug(str(cmd))
         return cmd
         

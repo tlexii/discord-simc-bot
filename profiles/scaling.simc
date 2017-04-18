@@ -1,4 +1,4 @@
 # Scaling settings
 calculate_scale_factors=1
 #dps_plot_stat=haste,mastery,crit,versatility
-iterations=15000
+iterations=20000
