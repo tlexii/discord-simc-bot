@@ -15,5 +15,9 @@ simc_path=/usr/local/simc/engine/simc
 output_path=/var/www/localhost/htdocs/sim
 profile_path=./profiles
 url_prefix=http://localhost/sim
-default_realm=khazgoroth
+
+[blizzard]
 blizzard_key=<blizzard api key>
+
+[warcraft]
+default_realm=khazgoroth

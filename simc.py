@@ -181,8 +181,8 @@ class Simc(object):
         self._output_path = config['simc']['output_path']
         self._profile_path = config['simc']['profile_path']
         self._url_prefix = config['simc']['url_prefix']
-        self._default_realm = config['simc']['default_realm']
-        self._blizzard_key = config['simc']['blizzard_key']
+        self._default_realm = config['warcraft']['default_realm']
+        self._blizzard_key = config['blizzard']['blizzard_key']
 
 def parse_args():
     """ Parse arguments when we are invoked as a program.
