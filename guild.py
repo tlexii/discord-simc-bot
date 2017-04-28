@@ -3,7 +3,7 @@
 #
 # Author: T'lexii (tlexii@gmail.com)
 #
-""" A class to poll blizzard api for guild news.
+""" A class to poll blizzard api for guild news - probably be sent to discord as webhook.
 """
 
 import os,time,logging,argparse,json
