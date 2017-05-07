@@ -21,3 +21,21 @@ blizzard_key=<blizzard api key>
 
 [warcraft]
 default_realm=khazgoroth
+run_file=/var/run/guild_timestamp
+
+# list the section names for each guild to track, no spaces after the commas
+guilds=guild1,guild2
+
+[guild1]
+realm=khazgoroth
+name=Guild Name 1
+webhook=https://discordapp.com/api/webhooks/<id>
+
+[guild2]
+realm=dathremar
+name=Guild Name 2
+webhook=https://discordapp.com/api/webhooks/<id>
+
+
+
+
