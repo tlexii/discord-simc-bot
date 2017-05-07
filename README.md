@@ -22,5 +22,11 @@ Musings:
  - The code is mostly ugly, I haven't sorted out cleanly shutting down discord-simc-bot yet
  - I like the separation of Discord bot from worker, that is why messages queues are used
 
+
+
+guild.py is a job running in cron every minute that polls blizzard for guild news and sends player and guild achievements to discord webhooks.
+
+
+
 Disclaimer: This is W.I.P. that progresses as free-time allows.
  
