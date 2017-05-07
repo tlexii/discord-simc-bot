@@ -6,13 +6,14 @@
 """ A class to poll blizzard api for guild news - probably be sent to discord as webhook.
 """
 
-import os,time,logging,argparse,json,re
+import os,time,logging,argparse,json,re,datetime
 import urllib.request
 import configparser
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-logging.basicConfig(filename='/var/log/guild_news.log', format=LOG_FORMAT, level=logging.DEBUG)
+logging.basicConfig(filename='/var/log/guild_news.log', format=LOG_FORMAT, level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
+FORMAT = "%Y-%m-%d %H:%M:%S"
 
 class GuildNews(object):
     """ Polls the Blizzard API for Guild News, maintains the timestamp internally
@@ -58,9 +59,9 @@ class GuildNews(object):
         LOGGER.debug('sending updates to : {}'.format(guild['webhook']))
         for ach in result['news_items']:
             if ach['type'] == 'playerAchievement':
-                line = '{} earned achievement {} for {} points'.format(ach['character'], ach['achievement']['title'],  ach['achievement']['points'])
+                line = '**{}** earned achievement **{}** for {} points'.format(ach['character'], ach['achievement']['title'],  ach['achievement']['points'])
             else:
-                line = '{} earned achievement {} for {} points'.format(result['output_guild'], ach['achievement']['title'], ach['achievement']['points'])
+                line = '**{}** earned achievement **{}** for {} points'.format(result['output_guild'], ach['achievement']['title'], ach['achievement']['points'])
             msg = {
                 'content' : line,
                 'embeds' : [{
@@ -73,7 +74,7 @@ class GuildNews(object):
                     }
                 }]
             }
-
+            LOGGER.info('{}: {}'.format(datetime.datetime.fromtimestamp(ach['timestamp']/1000).strftime(FORMAT), line))
             req = urllib.request.Request(guild['webhook'])
             req.add_header('User-Agent', 'discord-webhook (1.0)')
             req.add_header('Accept', 'application/json')
@@ -82,7 +83,6 @@ class GuildNews(object):
             jsondataasbytes = jsondata.encode('utf-8')   # needs to be bytes
             req.add_header('Content-Length', len(jsondataasbytes))
             response = urllib.request.urlopen(req, jsondataasbytes).read()
-            LOGGER.info(str(response))
             time.sleep(1)
 
     def run_guild(self, guildkey):
@@ -93,12 +93,12 @@ class GuildNews(object):
         params = {}
         try:
             # read the timestamp for the guilds runfile
-            if self.read_run_file(guildkey):
-                LOGGER.debug('lastModified is {}'.format(self._timestamp))
-            else:
+            if not self.read_run_file(guildkey):
                 # Blizzard send timestamp as milliseconds, make ours compatible
-                self._timestamp=int(time.time())*1000
+                self._timestamp=int(time.mktime(time.localtime()))*1000
                 self.write_run_file(guildkey)
+
+            self.log_time('Last processed', self._timestamp)
 
             guildjson = self.read_data(guildkey)
             #guildjson = self.read_debug(guildkey)
@@ -107,6 +107,7 @@ class GuildNews(object):
                 LOGGER.error('No data returned')
 
             guild = json.loads(guildjson)
+            self.log_time('blizz timestamp',guild["lastModified"])
             params["output_realm"] = guild["realm"]
             params["output_guild"] = guild["name"]
             params["last_modified"] = guild["lastModified"]
@@ -123,8 +124,8 @@ class GuildNews(object):
 
             # maintain our timestamp to match blizzard
             #self._timestamp=guild["lastModified"]
-            self._timestamp=int(time.time())*1000
-            LOGGER.debug('lastModified updated to {}'.format(self._timestamp))
+            self._timestamp=int(time.mktime(time.localtime()))*1000
+            self.log_time('Saving our lastModified',self._timestamp)
             self.write_run_file(guildkey)
                 
         except Exception as e:
@@ -151,6 +152,11 @@ class GuildNews(object):
         guildjson=f.read()
         f.close()
         return guildjson
+
+    def log_time(self, msg, timestamp):
+        LOGGER.debug(timestamp)
+        st = datetime.datetime.fromtimestamp(timestamp/1000)
+        LOGGER.info('{}: {}'.format(msg, st.strftime(FORMAT)))
 
     def parse_config(self, file):
         """ Read the local configuration from the file specified.
