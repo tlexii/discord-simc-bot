@@ -122,7 +122,8 @@ class GuildNews(object):
                 , guild["news"]))
 
             # maintain our timestamp to match blizzard
-            self._timestamp=guild["lastModified"]
+            #self._timestamp=guild["lastModified"]
+            self._timestamp=int(time.time())*1000
             LOGGER.debug('lastModified updated to {}'.format(self._timestamp))
             self.write_run_file(guildkey)
                 
