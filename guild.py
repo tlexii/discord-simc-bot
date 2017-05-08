@@ -122,10 +122,15 @@ class GuildNews(object):
                     and x["timestamp"] > self._timestamp
                 , guild["news"]))
 
-            # maintain our timestamp to match blizzard
             #self._timestamp=guild["lastModified"]
-            self._timestamp=int(time.mktime(time.localtime()))*1000
-            self.log_time('Saving our lastModified',self._timestamp)
+            if len(guild["news"]) > 0:
+                # maintain our timestamp to match blizzard's last even, not their last modified or our time
+                self._timestamp= guild["news"][0]["timestamp"]
+            else:
+                # use current time
+                self._timestamp=int(time.mktime(time.localtime()))*1000
+            
+            self.log_time('Saving lastEvent',self._timestamp)
             self.write_run_file(guildkey)
                 
         except Exception as e:
