@@ -58,6 +58,7 @@ def do_work(body):
     return result
 
 async def callback(channel, body, envelope, properties):
+    logger.info("callback invoked, running simc.py on thread_executor")
     loop = asyncio.get_event_loop()
     future = asyncio.ensure_future(loop.run_in_executor(executor, do_work, body))
     result = await future

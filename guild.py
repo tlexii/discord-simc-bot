@@ -49,7 +49,7 @@ class GuildNews(object):
         for guildkey in self._guilds.keys():
             result=self.run_guild(guildkey)
             LOGGER.debug(str(result))
-            if len(result['news_items']) > 0:
+            if 'news_items' in result.keys() and len(result['news_items']) > 0:
                 self.announce(self._guilds[guildkey], result)
                     
             time.sleep(1)
@@ -59,9 +59,15 @@ class GuildNews(object):
         LOGGER.debug('sending updates to : {}'.format(guild['webhook']))
         for ach in result['news_items']:
             if ach['type'] == 'playerAchievement':
-                line = '**{}** earned achievement **{}** for {} points'.format(ach['character'], ach['achievement']['title'],  ach['achievement']['points'])
+                line = '**{}** earned achievement **{}** for {} points'.format(
+                    ach['character'],
+                    ach['achievement']['title'],
+                    ach['achievement']['points'])
             else:
-                line = '**{}** earned achievement **{}** for {} points'.format(result['output_guild'], ach['achievement']['title'], ach['achievement']['points'])
+                line = '**{}** earned achievement **{}** for {} points'.format(
+                    result['output_guild'], 
+                    ach['achievement']['title'], 
+                    ach['achievement']['points'])
             msg = {
                 'content' : line,
                 'embeds' : [{
@@ -124,7 +130,7 @@ class GuildNews(object):
 
             #self._timestamp=guild["lastModified"]
             if len(guild["news"]) > 0:
-                # maintain our timestamp to match blizzard's last even, not their last modified or our time
+                # maintain our timestamp to match blizzard's last event, not their last modified or our time
                 self._timestamp= guild["news"][0]["timestamp"]
             else:
                 # use current time

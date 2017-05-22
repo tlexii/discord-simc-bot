@@ -13,6 +13,7 @@ import json
 # Enable logging
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
 logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+#logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 # TODO check config valid
@@ -113,6 +114,7 @@ async def callback(channel, body, envelope, properties):
     if body is None:
         await client.send_message(xchannel, "An error occurred while processing a request")
     else:
+        await channel.basic_client_ack(delivery_tag=envelope.delivery_tag)
         result = json.loads(body.decode('utf-8'))
         if "output_character" in result.keys():
 
