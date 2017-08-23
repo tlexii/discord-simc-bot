@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -15,7 +15,7 @@ import urllib.request
 import configparser
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
+logging.basicConfig(filename='/var/log/simcdaemon.log', format=LOG_FORMAT, level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 class Simc(object):
@@ -43,9 +43,11 @@ class Simc(object):
         try:
             params = self.parse_args(character, **kwargs)
             cmd= self.generate_cmd(params)
+            LOGGER.info(str(cmd))
             
-            result=subprocess.check_output(cmd).decode('utf-8')
-            if "output" in kwargs.keys():
+            presult=subprocess.check_output(cmd,stderr=subprocess.STDOUT)
+            result=presult.decode('utf-8')
+            if "output" in kwargs.keys() and kwargs["output"]==1:
                 print(result)
 
             params["colour"] = 0x119911
@@ -88,13 +90,16 @@ class Simc(object):
             else:
                 params["weights"]=""
 
-        except CalledProcessError as e:
+        except subprocess.CalledProcessError as e:
             LOGGER.error('CalledProcessError calling simc')
             LOGGER.error(str(e))
+            LOGGER.error(e.output)
+            raise
             
         except Exception as e:
             LOGGER.error('Exception calling simc')
             LOGGER.error(str(e))
+            raise
 
         finally:
             if "tmpfile" in params.keys() and os.path.isfile(params["tmpfile"]):
@@ -197,9 +202,10 @@ def parse_args():
     return vars(parser.parse_args())
 
 if __name__ == '__main__':
+    logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
     args = parse_args()
     character = args.pop('character')
 
     simc = Simc()
     result = simc.run(character, **args)
-    print(str(result))
+    #print(str(result))

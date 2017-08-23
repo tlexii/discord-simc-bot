@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -12,8 +12,8 @@ import json
 
 # Enable logging
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
 #logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
+logging.basicConfig(filename='/var/log/simcdaemon.log', format=LOG_FORMAT, level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 # TODO check config valid

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -18,27 +18,25 @@ from simc import Simc
 
 # Enable logging
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s')
+#logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
+logging.basicConfig(filename='/var/log/simcdaemon.log', format=LOG_FORMAT, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# TODO check config valid
-config = configparser.ConfigParser()
-config.read('discord_simc.conf')
-hostname = config['rabbitmq']['hostname']
-port = config['rabbitmq']['port']
-exchange_name = config['simcdaemon']['exchange']
-request_routing_key = config['simcdaemon']['request_routing_key']
-response_routing_key = config['simcdaemon']['response_routing_key']
+hostname = None
+port = None
+exchange_name = None
+request_routing_key = None
+response_routing_key = None
 
-sim = Simc()
+sim = None
 transport = None
 protocol = None
 channel = None
 queue_name = None
 executor = ProcessPoolExecutor(3)
 
-logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 def do_work(body):
+    global sim
     """ A plain python function run in an executor which wraps the result as a future
     """
     logger.debug(str(body))
@@ -95,6 +93,20 @@ async def receive_request():
 
 
 def main():
+    global hostname, port, exchange_name, request_routing_key, response_routing_key
+    global sim
+    logger.info('attempting to start')
+
+    # TODO check config valid
+    config = configparser.ConfigParser()
+    config.read('discord_simc.conf')
+    hostname = config['rabbitmq']['hostname']
+    port = config['rabbitmq']['port']
+    exchange_name = config['simcdaemon']['exchange']
+    request_routing_key = config['simcdaemon']['request_routing_key']
+    response_routing_key = config['simcdaemon']['response_routing_key']
+
+    sim = Simc()
 
     try:
         logger.debug('running daemon')
