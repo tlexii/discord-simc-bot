@@ -1,0 +1,32 @@
+#!/sbin/openrc-run
+command=/home/jon/projects/discord-simc-bot/discord-simc-bot.sh
+pidfile=/var/run/discord-simc-bot.pid
+name="Discord Bot Daemon"
+description="Discord Bot"
+
+path=/home/jon/projects/discord-simc-bot
+logfile=/var/log/discord-simc-bot.log
+
+depend() {
+	need localmount
+	after bootmisc
+	after simcdaemon
+	after rabbitmq
+}
+
+start_pre() {
+	checkpath -f -o root:jon -m 0660 $logfile
+}
+
+start() {
+	ebegin "Starting $name"
+	start-stop-daemon --start -b -m -p $pidfile -d $path --user root --group root --exec $command
+	eend $?
+}
+
+
+stop() {
+	ebegin "Stopping $name"
+	start-stop-daemon --stop -p $pidfile -d $path --exec $command
+	eend $?
+}

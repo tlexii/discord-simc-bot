@@ -11,6 +11,7 @@
 """
 
 import os,subprocess,logging,shlex,tempfile,re,argparse,json
+import discord
 import urllib.request
 import configparser
 
@@ -32,6 +33,33 @@ class Simc(object):
             self._url_prefix = "http://localhost/"
             self._default_realm = "khazgoroth"
             self._blizzard_key = None
+
+    def check_realm(r):
+        transtable = str.maketrans("","","'")
+        cleaned = str(r).lower().translate(transtable)
+        return cleaned
+
+    def cmd(self):
+        return '!sim'
+
+    def create_payload_from_msg(self, msg):
+        """
+            Strips the command from the start and turns the input into a dictionary
+        """
+        raw_data=msg[ len(self.cmd())+1 : ]
+        words=raw_data.split()
+        result = {
+            "character" : words[0]
+        }
+        if len(words) == 1:
+            result["realm"] = "khazgoroth"
+        else:
+            result["realm"] = self.check_realm(words[1])
+            if len(words) >= 3:
+                result["movement"] = words[2]
+            if len(words) == 4:
+                result["scaling"] = words[3]
+        return result
 
     def run(self, character, **kwargs):
         """ Runs a simulation and then looks up additional information for the caller
@@ -189,6 +217,22 @@ class Simc(object):
         self._default_realm = config['warcraft']['default_realm']
         self._blizzard_key = config['blizzard']['blizzard_key']
 
+    def generate_embed(self,result):
+        # create the message to send to discord
+        embed = discord.Embed(
+            title="{} : {} dps".format(result["output_character"],result["dps"]),
+            description="{}\n{} {} {}\n{}".format(
+                result["output_realm"],
+                result["output_race"],
+                result["output_spec"],
+                result["output_class"],
+                result["weights"]),
+            url=result["url"],
+            colour=result["colour"]
+        )
+        embed.set_thumbnail(url="https://render-us.worldofwarcraft.com/character/{}".format(result["thumbnail"]))
+        return embed
+
 def parse_args():
     """ Parse arguments when we are invoked as a program.
 
@@ -200,6 +244,10 @@ def parse_args():
     parser.add_argument('--scaling','-s', action='store_const', const="1", help='whether to perform stat scaling simulation')
     parser.add_argument('--output','-o', action='store_const', const="1", help='whether to display the simc text on stdout')
     return vars(parser.parse_args())
+
+
+
+
 
 if __name__ == '__main__':
     logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)

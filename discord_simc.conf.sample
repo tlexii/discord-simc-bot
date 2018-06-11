@@ -7,6 +7,12 @@ exchange=myexchange
 request_routing_key=simc.request
 response_routing_key=simc.response
 
+[mounts]
+# exchange=myexchange
+request_routing_key=mounts.request
+response_routing_key=mounts.response
+cache=cache
+
 [discord]
 token=<bot auth token>
 
@@ -15,16 +21,21 @@ simc_path=/usr/local/simc/engine/simc
 output_path=/var/www/localhost/htdocs/sim
 profile_path=./profiles
 url_prefix=http://localhost/sim
+blizzard_key=<blizzard api key>
 
 [blizzard]
 blizzard_key=<blizzard api key>
 
 [warcraft]
 default_realm=khazgoroth
+default_region=us
 run_file=/var/run/guild_timestamp
 
 # list the section names for each guild to track, no spaces after the commas
 guilds=guild1,guild2
+
+[wcl]
+wcl_key=<warcraft api key>
 
 [guild1]
 realm=khazgoroth

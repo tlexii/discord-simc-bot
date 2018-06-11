@@ -1,0 +1,31 @@
+#!/sbin/openrc-run
+command=/home/jon/projects/discord-simc-bot/simcdaemon.sh
+pidfile=/var/run/simcdaemon.pid
+name="Simc Daemon"
+description="Simc Daemon retrieves messages from a queue and runs simulations then returns the result"
+
+path=/home/jon/projects/discord-simc-bot
+logfile=/var/log/simcdaemon.log
+
+depend() {
+	need localmount
+	after bootmisc
+	after rabbitmq
+}
+
+start_pre() {
+	checkpath -f -o root:jon -m 0660 $logfile
+}
+
+start() {
+	ebegin "Starting $name"
+	start-stop-daemon --start -b -m -p $pidfile -d $path --user root --group root --exec $command
+	eend $?
+}
+
+
+stop() {
+	ebegin "Stopping $name"
+	start-stop-daemon --stop -p $pidfile -d $path --exec $command
+	eend $?
+}
