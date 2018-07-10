@@ -31,7 +31,7 @@ class Mounts(object):
             self._default_realm = "khazgoroth"
             self._blizzard_key = None
 
-    def check_realm(r):
+    def check_realm(self,r):
         transtable = str.maketrans("","","'")
         cleaned = str(r).lower().translate(transtable)
         return cleaned
@@ -87,8 +87,10 @@ class Mounts(object):
         }
         if len(words) == 1:
             result["realm"] = "khazgoroth"
+            LOGGER.info('using default realm {}'.format(result["realm"]))
         else:
             result["realm"] = self.check_realm(words[1])
+        LOGGER.info('using realm {}'.format(result["realm"]))
         return result
 
     def get_data(self, realm, character, filename):

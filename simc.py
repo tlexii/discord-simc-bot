@@ -34,7 +34,7 @@ class Simc(object):
             self._default_realm = "khazgoroth"
             self._blizzard_key = None
 
-    def check_realm(r):
+    def check_realm(self,r):
         transtable = str.maketrans("","","'")
         cleaned = str(r).lower().translate(transtable)
         return cleaned
