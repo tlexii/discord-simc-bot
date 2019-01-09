@@ -104,9 +104,12 @@ class Simc(object):
                 params["output_class"]=match.group(3).replace('_',' ').capitalize()
                 params["output_spec"]=match.group(4).replace('_',' ').capitalize()
 
-            match = re.search(r'^\s*DPS:\s+([\.\d]+)\s+?.*$', result, re.I|re.M)
+            #   DPS=6559.98 DPS-Error=5.01109/0.08% DPS-Range=983.164/14.99%
+            match = re.search(r' DPS=([\.\d]+) DPS-Error', result, re.I|re.M)
             if match:
                 params["dps"]=match.group(1)
+            else:
+                params["dps"]=0
 
             # Weights :  Agi=9.85(0.17)  AP=9.31(0.17)  Crit=4.83(0.16)  Haste=3.16(0.16)  Mastery=5.95(0.17)  Vers=5.05(0.16)  Wdps=9.22(0.17)  WOHdps=0.81(0.16)
             match = re.search(r'^\s*Weights\s*:\s*(.+)?\s*$', result, re.I|re.M)
