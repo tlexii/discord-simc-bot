@@ -12,12 +12,12 @@
 
 import os,subprocess,logging,shlex,tempfile,re,argparse,json
 import discord
-import urllib.request
+#import urllib.request
+from urllib.request import Request,urlopen
 import configparser
+from overlordauth import OverlordAuthDb
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-logging.basicConfig(filename='/var/log/simcdaemon.log', format=LOG_FORMAT, level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
 
 class Simc(object):
     """ Python wrapper around the SimulationCraft executable.
@@ -32,7 +32,8 @@ class Simc(object):
             self._profile_path = "./profiles"
             self._url_prefix = "http://localhost/"
             self._default_realm = "khazgoroth"
-            self._blizzard_key = None
+
+        self._auth = OverlordAuthDb('discord_simc.conf')
 
     def check_realm(self,r):
         transtable = str.maketrans("","","'")
@@ -66,35 +67,37 @@ class Simc(object):
 
         :param str character: name of character to sim
         """
-        LOGGER.info('Run called with character name {}'.format(character))
+        logging.info('Run called with character name {}'.format(character))
         params = {}
         try:
             params = self.parse_args(character, **kwargs)
             cmd= self.generate_cmd(params)
-            LOGGER.info(str(cmd))
+            logging.info(str(cmd))
             
             presult=subprocess.check_output(cmd,stderr=subprocess.STDOUT)
             result=presult.decode('utf-8')
-            if "output" in kwargs.keys() and kwargs["output"]==1:
+            if "output" in kwargs.keys() and kwargs["output"]=='1':
                 print(result)
 
             params["colour"] = 0x119911
             params["output_realm"] = None
             params["thumbnail"] = None
-            if self._blizzard_key:
-                f=urllib.request.urlopen('https://us.api.battle.net/wow/character/{}/{}?locale=en_US&apikey={}'.format(
-                    params["realm"],
-                    params["character"],
-                    self._blizzard_key))
-                toonjson=f.read().decode('utf-8')
-                f.close()
-                toon = json.loads(toonjson)
-                params["output_realm"] = toon["realm"]
-                params["thumbnail"] = toon["thumbnail"]
-                if toon["faction"]==0:
-                    params["colour"] = 0x1111FF
-                else:
-                    params["colour"] = 0xFF1111
+
+            self._auth.load_token()
+            url='https://us.api.blizzard.com/wow/character/{}/{}?locale=en_US'.format(params["realm"], params["character"])
+            req = Request(url)
+            req.add_header('Authorization', "Bearer {}".format(self._auth.get_token()['access_token']))
+            f=urlopen(req)
+            toonjson=f.read().decode('utf-8')
+            f.close()
+            toon = json.loads(toonjson)
+
+            params["output_realm"] = toon["realm"]
+            params["thumbnail"] = toon["thumbnail"]
+            if toon["faction"]==0:
+                params["colour"] = 0x1111FF
+            else:
+                params["colour"] = 0xFF1111
 
             # Player: Vengel night_elf warrior protection 110
             match = re.search(r'^Player:\s+(\w+)\s+(\w+)\s+(\w+)\s+(\w+)\s+\d+$', result, re.I|re.M|re.U)
@@ -122,14 +125,14 @@ class Simc(object):
                 params["weights"]=""
 
         except subprocess.CalledProcessError as e:
-            LOGGER.error('CalledProcessError calling simc')
-            LOGGER.error(str(e))
-            LOGGER.error(e.output)
+            logging.error('CalledProcessError calling simc')
+            logging.error(str(e))
+            logging.error(e.output)
             raise
             
         except Exception as e:
-            LOGGER.error('Exception calling simc')
-            LOGGER.error(str(e))
+            logging.error('Exception calling simc')
+            logging.error(str(e))
             raise
 
         finally:
@@ -171,7 +174,7 @@ class Simc(object):
 
         params["path"] = "{}/{}.html".format(self._output_path, params["filename"])
         params["url"] = "{}/{}.html".format(self._url_prefix, params["filename"])
-        LOGGER.debug(str(params))
+        logging.debug(str(params))
         return params
 
     def generate_cmd(self, params):
@@ -193,7 +196,7 @@ class Simc(object):
         else:
             cmd.append("{}/noscaling.simc".format(self._profile_path))
         cmd.append("html={}".format(params["path"]))
-        LOGGER.debug(str(cmd))
+        logging.debug(str(cmd))
         return cmd
         
     def create_toon_file(self,params):
@@ -210,7 +213,7 @@ class Simc(object):
         """ Read the local configuration from the file specified.
 
         """
-        LOGGER.debug("parsing config file: {}".format(file))
+        logging.debug("parsing config file: {}".format(file))
         config = configparser.ConfigParser()
         config.read(file)
         self._simc_path = config['simc']['simc_path']
@@ -218,7 +221,6 @@ class Simc(object):
         self._profile_path = config['simc']['profile_path']
         self._url_prefix = config['simc']['url_prefix']
         self._default_realm = config['warcraft']['default_realm']
-        self._blizzard_key = config['blizzard']['blizzard_key']
 
     def generate_embed(self,result):
         # create the message to send to discord
@@ -253,7 +255,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
     args = parse_args()
     character = args.pop('character')
 

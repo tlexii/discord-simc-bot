@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!python
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -11,16 +11,14 @@
 
 import os,logging,shlex,tempfile,re,argparse,json
 import discord
-import urllib.request
+import overlordauth
+from urllib.request import Request,urlopen
 import configparser
 from datetime import datetime,timedelta
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-#logging.basicConfig(filename='/var/log/mountsdaemon.log', format=LOG_FORMAT, level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
 
 class Mounts(object):
-    """ Python wrapper around the SimulationCraft executable.
+    """ Python program to retrieve a characters mounts information from blizzard.
     """
 
     def __init__(self):
@@ -29,7 +27,10 @@ class Mounts(object):
         else:
             self._output_path = "./cache"
             self._default_realm = "khazgoroth"
-            self._blizzard_key = None
+
+        #self._auth = overlordauth.OverlordAuthFile('discord_simc.conf')
+        self._auth = overlordauth.OverlordAuthDb('discord_simc.conf')
+            
 
     def check_realm(self,r):
         transtable = str.maketrans("","","'")
@@ -44,7 +45,7 @@ class Mounts(object):
 
         :param str character: name of character to sim
         """
-        LOGGER.info('Run called with character name {}'.format(character))
+        logging.info('Run called with character name {}'.format(character))
         params = {}
         try:
             params = self.parse_args(character, **kwargs)
@@ -64,14 +65,14 @@ class Mounts(object):
                 params["colour"] = 0x1111FF
             else:
                 params["colour"] = 0xFF1111
-            LOGGER.debug(str(params))
+            logging.debug(str(params))
 
             if "output" in kwargs.keys() and kwargs["output"]==1:
                 print(str(params))
 
         except Exception as e:
-            LOGGER.error('Exception calling mounts')
-            LOGGER.error(str(e))
+            logging.error('Exception calling mounts')
+            logging.error(str(e))
             raise
 
         return params
@@ -87,37 +88,40 @@ class Mounts(object):
         }
         if len(words) == 1:
             result["realm"] = "khazgoroth"
-            LOGGER.info('using default realm {}'.format(result["realm"]))
+            logging.info('using default realm {}'.format(result["realm"]))
         else:
             result["realm"] = self.check_realm(words[1])
-        LOGGER.info('using realm {}'.format(result["realm"]))
+        logging.info('using realm {}'.format(result["realm"]))
         return result
 
     def get_data(self, realm, character, filename):
         # look for existing file
         toon = None
         if os.path.isfile(filename):
-            try:
-                f = open(filename,"rt")
-                toon = json.load(f)
-                lastModified = datetime.fromtimestamp( toon["lastModified"] / 1000 )
-                plus10 = lastModified + timedelta(minutes=10)
-                LOGGER.debug('last modified {}'.format(str(lastModified)))
-                LOGGER.debug('plus 10 min {}'.format(str(plus10)))
-                if datetime.now() < plus10:
-                    toon = None
-            except Exception as e:
-                LOGGER.error('Exception calling mounts')
-                LOGGER.error(str(e))
-                raise
-            finally:
-                f.close()
+            nextcheck = datetime.fromtimestamp(os.path.getmtime(filename)) + timedelta(minutes=2)
+            logging.debug('file nextcheck {}'.format(str(nextcheck)))
+            if datetime.now() < nextcheck:  # use cached version
+                try:
+                    f = open(filename,"rt")
+                    toon = json.load(f)
+                    lastModified = datetime.fromtimestamp( toon["lastModified"] / 1000 )
+                    logging.debug('json last modified {}'.format(str(lastModified)))
+                except Exception as e:
+                    logging.error('Exception calling mounts')
+                    logging.error(str(e))
+                    raise
+                finally:
+                    f.close()
 
         if toon == None:
             # retrieve from blizz
-            url='https://us.api.battle.net/wow/character/{}/{}?fields=mounts&locale=en_US&apikey={}'.format(realm, character, self._blizzard_key)
-            LOGGER.info(url)
-            f=urllib.request.urlopen(url)
+            logging.debug('retrieving from blizzard')
+            self._auth.load_token()
+            url='https://us.api.blizzard.com/wow/character/{}/{}?fields=mounts&locale=en_US'.format(realm, character)
+            logging.info(url)
+            req = Request(url)
+            req.add_header('Authorization', "Bearer {}".format(self._auth.get_token()['access_token']))
+            f=urlopen(req)
             toonjson=f.read().decode('utf-8')
             f.close()
             f = open(filename,"wt")
@@ -139,19 +143,18 @@ class Mounts(object):
         else:
             params["realm"] = self._default_realm
         params["filename"] = "./{}/{}_{}_mounts.json".format(self._output_path, params["realm"], character)
-        LOGGER.debug(str(params))
+        logging.debug(str(params))
         return params
 
     def parse_config(self, file):
         """ Read the local configuration from the file specified.
 
         """
-        LOGGER.debug("parsing config file: {}".format(file))
+        logging.debug("parsing config file: {}".format(file))
         config = configparser.ConfigParser()
         config.read(file)
         self._default_realm = config['warcraft']['default_realm']
         self._output_path = config['mounts']['cache']
-        self._blizzard_key = config['blizzard']['blizzard_key']
 
     def generate_embed(self,result):
         embed = discord.Embed(
@@ -175,6 +178,7 @@ def parse_args():
     return vars(parser.parse_args())
 
 if __name__ == '__main__':
+    LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
     logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
     args = parse_args()
     character = args.pop('character')

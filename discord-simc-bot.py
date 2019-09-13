@@ -15,9 +15,7 @@ from mounts import Mounts
 
 # Enable logging
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-#logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
-logging.basicConfig(filename='/var/log/simcdaemon.log', format=LOG_FORMAT, level=logging.DEBUG)
-LOGGER = logging.getLogger(__name__)
+logging.basicConfig(filename='/var/log/discord-simc-bot.log', format=LOG_FORMAT, level=logging.INFO)
 
 # TODO check config valid
 config = configparser.ConfigParser()
@@ -42,14 +40,14 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-#    if message.server is None:
-#        LOGGER.info('PRVMSG:{0.author.name}: {0.clean_content}'.format(message))
+#    if message.guild is None:
+#        logging.info('PRVMSG:{0.author.name}: {0.clean_content}'.format(message))
 #        for attach in message.attachments:
-#            LOGGER.info('ATTACH:{0.filename}:{0.url}'.format(attach))
+#            logging.info('ATTACH:{0.filename}:{0.url}'.format(attach))
 #        for embed in message.embeds:
-#            LOGGER.info('EMBED:{0.title}:{0.url}:{0.image.url}'.format(message))
+#            logging.info('EMBED:{0.title}:{0.url}:{0.image.url}'.format(message))
 #    else:
-#        LOGGER.info('MSG:{0.server.Name}:{0.author.name}:{0.author.nick}: {0.clean_content}'.format(message))
+#        logging.info('MSG:{0.guild.Name}:{0.author.name}:{0.author.nick}: {0.clean_content}'.format(message))
 
     if message.content.lower().startswith('!help'):
         helpmsg="""
@@ -60,60 +58,68 @@ async def on_message(message):
     Minimum time between updates is 10mins, cached results are returned for less than 10mins
 
 """
-        await client.send_message(message.author, helpmsg)
+        await message.channel.send(helpmsg)
 
-    LOGGER.info('source: {} {}({}) {}({})'.format(
-        str(message.server),
+    logging.info('source: {} {}({}) {}({})'.format(
+        str(message.guild),
         str(message.channel),
         message.channel.id,
         str(message.author),
         message.author.id
     ))
     content = str(message.content.lower())
-    LOGGER.info('content: {}'.format(content))
+    logging.info('content: {}'.format(content))
 
     if content.startswith(mounts.cmd()):
         payload = mounts.create_payload_from_msg(str(message.content))
             
-        await client.channel.basic_publish( exchange_name=exchange, routing_key=mounts_request_routing_key,
-            properties={ 'reply_to':message.channel.id, 'delivery_mode':2, },
-            payload=json.dumps(payload))
+        await client.mqchannel.basic_publish(
+                exchange_name=exchange,
+                routing_key=mounts_request_routing_key,
+                properties={
+                    'reply_to' : str(message.channel.id),
+                    'delivery_mode':2, },
+                payload=json.dumps(payload))
 
-        await client.send_message(message.channel, 'Queued mounts check for {}'.format(payload["character"]))
+        await message.channel.send('Queued mounts check for {}'.format(payload["character"]))
 
     if content.startswith(simc.cmd()):
         payload = simc.create_payload_from_msg(str(message.content))
             
-        await client.channel.basic_publish( exchange_name=exchange, routing_key=simc_request_routing_key,
-            properties={ 'reply_to':message.channel.id, 'delivery_mode':2, },
-            payload=json.dumps(payload))
+        await client.mqchannel.basic_publish(
+                exchange_name=exchange,
+                routing_key=simc_request_routing_key,
+                properties={
+                    'reply_to' : str(message.channel.id),
+                    'delivery_mode':2, },
+                payload=json.dumps(payload))
 
-        await client.send_message(message.channel, 'Queued simulation of {}'.format(payload["character"]))
+        await message.channel.send( 'Queued simulation of {}'.format(payload["character"]))
 
 
 @client.event
 async def on_ready():
-    LOGGER.info('Logged in as {} ({})'.format(client.user.name,client.user.id))
+    logging.info('Logged in as {} ({})'.format(client.user.name,client.user.id))
 
     try:
-        client.transport, client.protocol = await aioamqp.connect(hostname, port)
+        client.mqtransport, client.mqprotocol = await aioamqp.connect(hostname, port)
     except aioamqp.AmqpClosedConnection:
-        LOGGER.info("closed connections")
+        logging.info("closed connections")
         return
 
-    client.channel = await client.protocol.channel()
-    await client.channel.basic_qos(prefetch_count=1)
-    await client.channel.exchange(exchange, 'topic')
+    client.mqchannel = await client.mqprotocol.channel()
+    await client.mqchannel.basic_qos(prefetch_count=1)
+    await client.mqchannel.exchange(exchange, 'topic')
 
 
 @client.event
 async def on_resumed():
-    LOGGER.info('Resumed session')
+    logging.info('Resumed session')
 
 
 #@client.event
 #async def on_socket_raw_receive(msg):
-#    LOGGER.info(msg)
+#    logging.info(msg)
 
 
 @client.event
@@ -122,9 +128,9 @@ async def on_member_update(before,after):
         msg = ''
         send = False
         if before.nick == None and after.nick == None:
-            msg = 'STATUS:{0.server.name}:{0.name}'.format(before)
+            msg = 'STATUS:{0.guild.name}:{0.name}'.format(before)
         else:
-            msg = 'STATUS:{0.server.name}:{0.name}:{0.nick}'.format(before)
+            msg = 'STATUS:{0.guild.name}:{0.name}:{0.nick}'.format(before)
 
         if before.nick != after.nick:
             msg += ' new nick: {0.nick}'.format(after)
@@ -134,15 +140,15 @@ async def on_member_update(before,after):
             msg += ' status: {0.status} -> {1.status}'.format(before, after)
             send = True
 
-        if before.game != after.game:
-            send = True
-            msg += ' game '
-            if before.game == None:
-                msg += 'started: {0.game}'.format(after)
-            elif after.game == None:
-                msg += 'ended: {0.game}'.format(before)
-            elif before.game != None and after.game != None:
-                msg += '{0.game} -> {1.game}'.format(before, after)
+#        if before.game != after.game:
+#            send = True
+#            msg += ' game '
+#            if before.game == None:
+#                msg += 'started: {0.game}'.format(after)
+#            elif after.game == None:
+#                msg += 'ended: {0.game}'.format(before)
+#            elif before.game != None and after.game != None:
+#                msg += '{0.game} -> {1.game}'.format(before, after)
 
 #        roles = ''
 #        for x in before.roles:
@@ -157,11 +163,11 @@ async def on_member_update(before,after):
             send = True
 
         if send: 
-            LOGGER.info(msg)
+            logging.info(msg)
 
     except Exception as e:
-        LOGGER.error('Exception in on_message_update')
-        LOGGER.error(str(e))
+        logging.error('Exception in on_message_update')
+        logging.error(str(e))
 
 
 @client.event
@@ -170,9 +176,9 @@ async def on_voice_state_update(before,after):
         msg = ''
         send = False
         if before.nick == None:
-            msg = 'VOICE:{0.server.name}:{0.name}'.format(before)
+            msg = 'VOICE:{0.guild.name}:{0.name}'.format(before)
         else:
-            msg = 'VOICE:{0.server.name}:{0.name}:{0.nick}'.format(before)
+            msg = 'VOICE:{0.guild.name}:{0.name}:{0.nick}'.format(before)
 
         if before.voice.voice_channel == None and after.voice.voice_channel == None:
             send = False
@@ -204,40 +210,43 @@ async def on_voice_state_update(before,after):
                 msg += ' AFK'
 
         if send:
-            LOGGER.info(msg)
+            logging.info(msg)
 
     except Exception as e:
-        LOGGER.error('Exception in on_voice_state_update')
-        LOGGER.error(str(e))
+        logging.error('Exception in on_voice_state_update')
+        logging.error(str(e))
 
 
 async def callback(channel, body, envelope, properties):
     """Process response from SimcDaemon by sending msg to user
     """
-    LOGGER.info("reply_to {} received {}".format(properties.reply_to, body))
-    xchannel=discord.Object(str(properties.reply_to))
+    logging.info("reply_to {} received {}".format(properties.reply_to, body))
+    xchannel= client.get_channel(int(properties.reply_to))
 
     if body is None:
-        await client.send_message(xchannel, "An error occurred while processing a request")
+        await xchannel.send("An error occurred while processing a request")
+
+    elif xchannel is None:
+        logging.error("Unable to get_channel for {}".format(properties.reply_to))
 
     elif envelope.routing_key == simc_response_routing_key:
         await channel.basic_client_ack(delivery_tag=envelope.delivery_tag)
         result = json.loads(body.decode('utf-8'))
         if "output_character" in result.keys():
             embed = simc.generate_embed(result)
-            await client.send_message(xchannel, content='Simulation of {} complete'.format(result["output_character"]), embed=embed)
+            await xchannel.send(content='Simulation of {} complete'.format(result["output_character"]), embed=embed)
         else:
-            await client.send_message(xchannel, result["response"])
+            await xchannel.send(result["response"])
 
     elif envelope.routing_key == mounts_response_routing_key:
         await channel.basic_client_ack(delivery_tag=envelope.delivery_tag)
         result = json.loads(body.decode('utf-8'))
         if "output_name" in result.keys():
             embed = mounts.generate_embed(result)
-            await client.send_message(xchannel, content='Mounts for **{}**-{}'.format(
+            await xchannel.send(content='Mounts for **{}**-{}'.format(
                 result["output_name"], result["output_realm"]), embed=embed)
         else:
-            await client.send_message(xchannel, result["response"])
+            await xchannel.send(result["response"])
 
 
 async def receive_simc(loop):
@@ -247,7 +256,7 @@ async def receive_simc(loop):
     try:
         r_transport, r_protocol = await aioamqp.connect(hostname, port, loop=loop)
     except aioamqp.AmqpClosedConnection:
-        LOGGER.info("closed connections")
+        logging.info("closed connections")
         return
 
     r_channel = await r_protocol.channel()
@@ -258,7 +267,7 @@ async def receive_simc(loop):
     await r_channel.queue_bind( exchange_name=exchange, queue_name=r_queue_name, routing_key=simc_response_routing_key)
     await r_channel.queue_bind( exchange_name=exchange, queue_name=r_queue_name, routing_key=mounts_response_routing_key)
 
-    LOGGER.info("simc response consumer listening")
+    logging.info("simc response consumer listening")
     await r_channel.basic_consume(callback, queue_name=r_queue_name)
 
 

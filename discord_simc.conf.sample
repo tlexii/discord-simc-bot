@@ -25,6 +25,8 @@ blizzard_key=<blizzard api key>
 
 [blizzard]
 blizzard_key=<blizzard api key>
+blizzard_clientid=<app id>
+blizzard_clientsecret=<app secret>
 
 [warcraft]
 default_realm=khazgoroth

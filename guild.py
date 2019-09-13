@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!python
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -7,12 +7,11 @@
 """
 
 import os,time,logging,argparse,json,re,datetime
-import urllib.request
+from urllib.request import Request,urlopen
+from urllib import parse
 import configparser
+from overlordauth import OverlordAuthDb
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-logging.basicConfig(filename='/var/log/guild_news.log', format=LOG_FORMAT, level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
 FORMAT = "%Y-%m-%d %H:%M:%S"
 
 class GuildNews(object):
@@ -25,8 +24,9 @@ class GuildNews(object):
             self.parse_config(config_file)
         else:
             self._guilds = {}
-            self._blizzard_key = None
             self._run_dir = '/var/run/warcraft'
+
+        self._auth = OverlordAuthDb(config_file)
 
     def read_run_file(self, guildkey):
         try:
@@ -45,18 +45,18 @@ class GuildNews(object):
     def run(self):
         """ Loops over all the keys in the configuration
         """
-        LOGGER.info('BEGIN Polling guilds')
+        logging.info('BEGIN Polling guilds')
         for guildkey in self._guilds.keys():
             result=self.run_guild(guildkey)
-            LOGGER.debug(str(result))
+            logging.debug(str(result))
             if 'news_items' in result.keys() and len(result['news_items']) > 0:
                 self.announce(self._guilds[guildkey], result)
                     
             time.sleep(1)
-        LOGGER.info('END Polling guilds')
+        logging.info('END Polling guilds')
 
     def announce(self, guild, result):
-        LOGGER.debug('sending updates to : {}'.format(guild['webhook']))
+        logging.debug('sending updates to : {}'.format(guild['webhook']))
         for ach in result['news_items']:
             if ach['type'] == 'playerAchievement':
                 line = '**{}** earned achievement **{}** for {} points'.format(
@@ -80,22 +80,22 @@ class GuildNews(object):
                     }
                 }]
             }
-            LOGGER.info('{}: {}'.format(datetime.datetime.fromtimestamp(ach['timestamp']/1000).strftime(FORMAT), line))
-            req = urllib.request.Request(guild['webhook'])
+            logging.info('{}: {}'.format(datetime.datetime.fromtimestamp(ach['timestamp']/1000).strftime(FORMAT), line))
+            req = Request(guild['webhook'])
             req.add_header('User-Agent', 'discord-webhook (1.0)')
             req.add_header('Accept', 'application/json')
             req.add_header('Content-Type', 'application/json; charset=utf-8')
             jsondata = json.dumps(msg)
             jsondataasbytes = jsondata.encode('utf-8')   # needs to be bytes
             req.add_header('Content-Length', len(jsondataasbytes))
-            response = urllib.request.urlopen(req, jsondataasbytes).read()
+            response = urlopen(req, jsondataasbytes).read()
             time.sleep(1)
 
     def run_guild(self, guildkey):
         """ Contact endpoint for each guilds data update
 
         """
-        LOGGER.info('GUILD key {}'.format(guildkey))
+        logging.info('GUILD key {}'.format(guildkey))
         params = {}
         try:
             # read the timestamp for the guilds runfile
@@ -110,7 +110,7 @@ class GuildNews(object):
             #guildjson = self.read_debug(guildkey)
 
             if guildjson == None:
-                LOGGER.error('No data returned')
+                logging.error('No data returned')
 
             guild = json.loads(guildjson)
             self.log_time('blizz timestamp',guild["lastModified"])
@@ -140,23 +140,22 @@ class GuildNews(object):
             self.write_run_file(guildkey)
                 
         except Exception as e:
-            LOGGER.error('Exception executing request')
-            LOGGER.error(str(e))
+            logging.error('Exception executing request')
+            logging.error(str(e))
 
         return params
 
     def read_data(self, guildkey):
-        if self._blizzard_key:
-            f=urllib.request.urlopen('https://us.api.battle.net/wow/guild/{}/{}?fields=news&locale=en_US&apikey={}'.format(
-                urllib.parse.quote(self._guilds[guildkey]['realm']),
-                urllib.parse.quote(self._guilds[guildkey]['name']), 
-                self._blizzard_key))
-            guildjson=f.read().decode('utf-8')
-            f.close()
-            return guildjson
-        else:
-            LOGGER.error('No Blizzard API key provided')
-        return None
+        self._auth.load_token()
+        url='https://us.api.blizzard.com/wow/guild/{}/{}?fields=news&locale=en_US'.format(
+            parse.quote(self._guilds[guildkey]['realm']),
+            parse.quote(self._guilds[guildkey]['name']))
+        req = Request(url)
+        req.add_header('Authorization', "Bearer {}".format(self._auth.get_token()['access_token']))
+        f=urlopen(req)
+        guildjson=f.read().decode('utf-8')
+        f.close()
+        return guildjson
 
     def read_debug(self, guildkey):
         f=open('guild_news.json',"rt")
@@ -165,18 +164,17 @@ class GuildNews(object):
         return guildjson
 
     def log_time(self, msg, timestamp):
-        LOGGER.debug(timestamp)
+        logging.debug(timestamp)
         st = datetime.datetime.fromtimestamp(timestamp/1000)
-        LOGGER.info('{}: {}'.format(msg, st.strftime(FORMAT)))
+        logging.info('{}: {}'.format(msg, st.strftime(FORMAT)))
 
     def parse_config(self, file):
         """ Read the local configuration from the file specified.
 
         """
-        LOGGER.debug("parsing config file: {}".format(file))
+        logging.debug("parsing config file: {}".format(file))
         config = configparser.ConfigParser()
         config.read(file)
-        self._blizzard_key = config['blizzard']['blizzard_key']
         self._run_dir = config['warcraft']['run_dir']
         self._guilds = {}
         # create dict of guild configs
@@ -196,6 +194,8 @@ def parse_args():
     return vars(parser.parse_args())
 
 if __name__ == '__main__':
+    LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
+    logging.basicConfig(filename='/var/log/guild_news.log', format=LOG_FORMAT, level=logging.INFO)
     args = parse_args()
     config_file = args['config']
     guild_news = GuildNews(config_file)
