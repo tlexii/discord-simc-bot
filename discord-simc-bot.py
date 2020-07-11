@@ -30,6 +30,7 @@ mounts_response_routing_key = config['mounts']['response_routing_key']
 token = config['discord']['bot_token']
 
 client = discord.Client()
+client.mqchannel = None
 simc = Simc()
 mounts = Mounts()
 
@@ -101,15 +102,19 @@ async def on_message(message):
 async def on_ready():
     logging.info('Logged in as {} ({})'.format(client.user.name,client.user.id))
 
-    try:
-        client.mqtransport, client.mqprotocol = await aioamqp.connect(hostname, port)
-    except aioamqp.AmqpClosedConnection:
-        logging.info("closed connections")
-        return
+    if client.mqchannel == None:
+        try:
+            client.mqtransport, client.mqprotocol = await aioamqp.connect(hostname, port)
+        except aioamqp.AmqpClosedConnection:
+            logging.info("closed connections")
+            return
 
-    client.mqchannel = await client.mqprotocol.channel()
-    await client.mqchannel.basic_qos(prefetch_count=1)
-    await client.mqchannel.exchange(exchange, 'topic')
+        client.mqchannel = await client.mqprotocol.channel()
+        await client.mqchannel.basic_qos(prefetch_count=1)
+        await client.mqchannel.exchange(exchange, 'topic')
+
+    else:
+        logging.warning('channel already exists in client')
 
 
 @client.event
@@ -160,7 +165,7 @@ async def on_member_update(before,after):
 
         if not send:
             msg += ' invisible status change'
-            send = True
+            # send = True
 
         if send: 
             logging.info(msg)

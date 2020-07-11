@@ -2,6 +2,8 @@
 discord_simc.conf
 .apikey.txt
 test.py
+token.db
+token.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

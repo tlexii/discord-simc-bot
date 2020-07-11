@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -12,11 +12,13 @@ from urllib import parse
 import configparser
 from overlordauth import OverlordAuthDb
 
-FORMAT = "%Y-%m-%d %H:%M:%S"
+log = logging.getLogger('guild')
 
 class GuildNews(object):
     """ Polls the Blizzard API for Guild News, maintains the timestamp internally
     """
+
+    FORMAT = "%Y-%m-%d %H:%M:%S"
 
     def __init__(self, config_file):
 
@@ -45,18 +47,18 @@ class GuildNews(object):
     def run(self):
         """ Loops over all the keys in the configuration
         """
-        logging.info('BEGIN Polling guilds')
+        log.info('BEGIN Polling guilds')
         for guildkey in self._guilds.keys():
             result=self.run_guild(guildkey)
-            logging.debug(str(result))
+            log.debug(str(result))
             if 'news_items' in result.keys() and len(result['news_items']) > 0:
                 self.announce(self._guilds[guildkey], result)
                     
             time.sleep(1)
-        logging.info('END Polling guilds')
+        log.info('END Polling guilds')
 
     def announce(self, guild, result):
-        logging.debug('sending updates to : {}'.format(guild['webhook']))
+        log.debug('sending updates to : {}'.format(guild['webhook']))
         for ach in result['news_items']:
             if ach['type'] == 'playerAchievement':
                 line = '**{}** earned achievement **{}** for {} points'.format(
@@ -80,7 +82,7 @@ class GuildNews(object):
                     }
                 }]
             }
-            logging.info('{}: {}'.format(datetime.datetime.fromtimestamp(ach['timestamp']/1000).strftime(FORMAT), line))
+            log.info('{}: {}'.format(datetime.datetime.fromtimestamp(ach['timestamp']/1000).strftime(self.FORMAT), line))
             req = Request(guild['webhook'])
             req.add_header('User-Agent', 'discord-webhook (1.0)')
             req.add_header('Accept', 'application/json')
@@ -95,7 +97,7 @@ class GuildNews(object):
         """ Contact endpoint for each guilds data update
 
         """
-        logging.info('GUILD key {}'.format(guildkey))
+        log.info('GUILD key {}'.format(guildkey))
         params = {}
         try:
             # read the timestamp for the guilds runfile
@@ -110,7 +112,7 @@ class GuildNews(object):
             #guildjson = self.read_debug(guildkey)
 
             if guildjson == None:
-                logging.error('No data returned')
+                log.error('No data returned')
 
             guild = json.loads(guildjson)
             self.log_time('blizz timestamp',guild["lastModified"])
@@ -140,8 +142,8 @@ class GuildNews(object):
             self.write_run_file(guildkey)
                 
         except Exception as e:
-            logging.error('Exception executing request')
-            logging.error(str(e))
+            log.error('Exception executing request')
+            log.error(str(e))
 
         return params
 
@@ -164,15 +166,15 @@ class GuildNews(object):
         return guildjson
 
     def log_time(self, msg, timestamp):
-        logging.debug(timestamp)
+        log.debug(timestamp)
         st = datetime.datetime.fromtimestamp(timestamp/1000)
-        logging.info('{}: {}'.format(msg, st.strftime(FORMAT)))
+        log.info('{}: {}'.format(msg, st.strftime(self.FORMAT)))
 
     def parse_config(self, file):
         """ Read the local configuration from the file specified.
 
         """
-        logging.debug("parsing config file: {}".format(file))
+        log.debug("parsing config file: {}".format(file))
         config = configparser.ConfigParser()
         config.read(file)
         self._run_dir = config['warcraft']['run_dir']

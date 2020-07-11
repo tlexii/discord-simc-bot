@@ -57,10 +57,11 @@ class Mounts(object):
             mounts = toon["mounts"]
             #params["lastModified"] = toon["lastModified"]
             params["output_name"] = toon["name"]
-            params["collected"] = mounts["numCollected"]
-            params["uncollected"] = mounts["numNotCollected"]
+            params["collected"] = len(toon["mounts"])
+            params["uncollected"] = 999
             params["output_realm"] = toon["realm"]
-            params["thumbnail"] = toon["thumbnail"]
+            params["thumbnail"] = '' # toon["thumbnail"]
+            toon["faction"]=0
             if toon["faction"]==0:
                 params["colour"] = 0x1111FF
             else:
@@ -117,10 +118,11 @@ class Mounts(object):
             # retrieve from blizz
             logging.debug('retrieving from blizzard')
             self._auth.load_token()
-            url='https://us.api.blizzard.com/wow/character/{}/{}?fields=mounts&locale=en_US'.format(realm, character)
+            url='https://us.api.blizzard.com/profile/wow/character/{}/{}/collections/mounts?locale=en_US'.format(realm, character)
             logging.info(url)
             req = Request(url)
             req.add_header('Authorization', "Bearer {}".format(self._auth.get_token()['access_token']))
+            req.add_header('Battlenet-Namespace', 'profile-us')
             f=urlopen(req)
             toonjson=f.read().decode('utf-8')
             f.close()
@@ -128,6 +130,8 @@ class Mounts(object):
             f.write(toonjson)
             f.close()
             toon = json.loads(toonjson)
+            toon["realm"]=realm
+            toon["name"]=character
         return toon 
 
     def parse_args(self, character, **kwargs):
@@ -135,7 +139,7 @@ class Mounts(object):
             and adds other important mappings.
         """
         params = {
-            "character" : character
+            "character" : character.lower()
          }
 
         if "realm" in kwargs.keys():

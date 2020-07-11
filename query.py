@@ -8,9 +8,11 @@
 
 import os,logging,shlex,tempfile,re,argparse,json
 from urllib.request import Request,urlopen
+import urllib.parse
 import configparser
 from datetime import datetime,timedelta
 from overlordauth import OverlordAuthDb
+#from overlordauth import OverlordAuthFile
 
 
 class Wow(object):
@@ -25,6 +27,7 @@ class Wow(object):
             self._default_realm = "khazgoroth"
 
         self._auth = OverlordAuthDb('discord_simc.conf')
+        #self._auth = OverlordAuthFile('discord_simc.conf')
             
 
     def check_realm(self,r):
@@ -48,7 +51,8 @@ class Wow(object):
                 params["colour"] = 0xFF1111
             logging.debug(str(params))
 
-            lastlogout = datetime.fromtimestamp( int(toon["lastModified"]) / 1000)
+            lastlogout = self.get_lastModified(toon["lastModified"])
+
             delta = datetime.now() - lastlogout
             if delta.days > 0:
                 msg = "{} days ago".format(delta.days)
@@ -57,7 +61,7 @@ class Wow(object):
             else:
                 msg = "{} minutes ago".format(int(delta.seconds/60))
 
-            result = "{:20} {:20} {:20} {}".format(toon["name"],toon["realm"],str(lastlogout),msg)
+            result = "{:20} {:20} {:20} {}".format(toon["name"],toon["realm"]["name"],str(lastlogout),msg)
 
         except Exception as e:
             logging.error('Exception calling query')
@@ -66,18 +70,28 @@ class Wow(object):
 
         return result
 
+    def get_lastModified(self, datestr):
+        # Thu, 11 Jun 2020 21:16:33 GMT
+        local_date_time = datetime.strptime(datestr, '%a, %d %b %Y %H:%M:%S %Z') + timedelta(hours=10)
+        logging.debug(str(local_date_time))
+        return local_date_time
+        
+
     def get_data(self, realm, character):
         # retrieve from blizz
         logging.debug('retrieving from blizzard')
         self._auth.load_token()
-        url='https://us.api.blizzard.com/wow/character/{}/{}?locale=en_US'.format(realm, character)
+        logging.debug('access token={}'.format(self._auth.get_token()['access_token']))
+        url='https://us.api.blizzard.com/profile/wow/character/{}/{}?locale=en_US'.format(realm, urllib.parse.quote(character))
         logging.info(url)
         req = Request(url)
         req.add_header('Authorization', "Bearer {}".format(self._auth.get_token()['access_token']))
+        req.add_header('Battlenet-Namespace', 'profile-us')
         f=urlopen(req)
         toonjson=f.read().decode('utf-8')
         f.close()
         toon = json.loads(toonjson)
+        toon['lastModified']=str(f.info().get('Last-Modified'))
         return toon 
 
     def parse_args(self, character, **kwargs):
@@ -85,7 +99,7 @@ class Wow(object):
             and adds other important mappings.
         """
         params = {
-            "character" : character
+            "character" : character.lower()
          }
 
         if "realm" in kwargs.keys():
@@ -115,7 +129,7 @@ def parse_args():
 
 if __name__ == '__main__':
     LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -20s %(funcName) -25s %(lineno) -5d: %(message)s')
-    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+    logging.basicConfig(format=LOG_FORMAT, level=logging.WARN)
     args = parse_args()
     character = args.pop('character')
 

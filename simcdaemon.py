@@ -1,4 +1,4 @@
-#!python
+#!python3
 # -*- coding: utf-8 -*-
 #
 # Author: T'lexii (tlexii@gmail.com)
@@ -40,7 +40,7 @@ def do_simc_work(body):
     try:
         dict=json.loads(body.decode("utf-8"))
         logging.info(str(dict))
-        character = dict.pop('character')
+        character = dict.pop('character').lower()
         result = sim.run(character, **dict)
         logging.info(str(result))
 
