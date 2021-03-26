@@ -73,7 +73,7 @@ python-subunit==1.2.0
 python-telegram-bot==11.1.0
 pytz==2018.9
 pyxattr==0.6.0
-PyYAML==5.1
+PyYAML==5.4
 rdflib==4.2.2
 repoman==2.3.16
 requests==2.21.0
