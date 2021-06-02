@@ -88,7 +88,7 @@ telegram==0.0.1
 testtools==2.3.0
 traceback2==1.4.0
 unittest2==1.1.0
-urllib3==1.24.2
+urllib3==1.26.5
 virtualenv==16.0.0
 webapp-config==1.55
 webencodings==0.5.1
