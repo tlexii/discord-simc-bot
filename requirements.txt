@@ -47,7 +47,7 @@ mock==2.0.0
 more-itertools==7.2.0
 ndg-httpsclient==0.4.0
 nnpy==1.4.2
-numpy==1.14.5
+numpy==1.22.0
 parsedatetime==2.4
 pbr==4.2.0
 pika==1.0.1
